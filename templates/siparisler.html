@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Siparişler{% endblock %}
+{% block page_title %}Siparişler{% endblock %}
+{% block content %}
+<div class="table-wrap">
+  <div class="table-header">
+    <h2>Sipariş Listesi</h2>
+    <a href="/siparis/yeni" class="btn btn-primary btn-sm">+ Yeni Sipariş</a>
+  </div>
+  <table>
+    <thead><tr><th>Sipariş No</th><th>Müşteri</th><th>Tarih</th><th>Ürün Sayısı</th><th>Toplam</th><th>Fatura</th><th>Durum</th><th></th></tr></thead>
+    <tbody>
+    {% for s in siparisler %}
+    <tr>
+      <td><strong>{{ s.siparis_no }}</strong></td>
+      <td>{{ s.musteri.ad }}</td>
+      <td>{{ s.tarih.strftime('%d.%m.%Y %H:%M') }}</td>
+      <td>{{ s.kalemler|length }} kalem</td>
+      <td><strong>{{ "%.2f"|format(s.toplam) }} ₺</strong></td>
+      <td>{% if s.fatura %}<span class="badge badge-green">Var</span>{% else %}<span class="badge badge-gray">Yok</span>{% endif %}</td>
+      <td>
+        {% if s.durum == 'Onaylandı' %}<span class="badge badge-green">{{ s.durum }}</span>
+        {% elif s.durum == 'Beklemede' %}<span class="badge badge-orange">{{ s.durum }}</span>
+        {% elif s.durum == 'Teslim Edildi' %}<span class="badge badge-blue">{{ s.durum }}</span>
+        {% else %}<span class="badge badge-red">{{ s.durum }}</span>{% endif %}
+      </td>
+      <td><a href="/siparis/{{ s.id }}" class="btn btn-outline btn-sm">Detay</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" style="text-align:center;color:#999;padding:30px;">Sipariş bulunamadı</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

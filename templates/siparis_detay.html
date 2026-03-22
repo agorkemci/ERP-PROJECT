@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}{{ siparis.siparis_no }}{% endblock %}
+{% block page_title %}{{ siparis.siparis_no }}{% endblock %}
+{% block content %}
+
+<!-- Slide 19: State Machine Flow -->
+<div class="state-flow">
+  {% set states = [('00_TASLAK','Taslak'),('01_ONAYLANDI','Onaylandı'),('02_PICKING','Hazırlanıyor'),('03_SEVK','Sevk Edildi'),('04_FATURALAND','Faturalandı')] %}
+  {% for code, label in states %}
+    {% if siparis.durum == 'XX_IPTAL' %}
+      <div class="state-step cancelled">❌ İptal</div>{% if not loop.last %}<span class="arrow">›</span>{% endif %}
+    {% elif siparis.durum == code %}
+      <div class="state-step active">● {{ label }}</div>{% if not loop.last %}<span class="arrow">›</span>{% endif %}
+    {% elif loop.index < [('00_TASLAK',''),('01_ONAYLANDI',''),('02_PICKING',''),('03_SEVK',''),('04_FATURALAND','')]|selectattr(0,'eq',siparis.durum)|list|length + 1 %}
+      <div class="state-step done">✓ {{ label }}</div>{% if not loop.last %}<span class="arrow">›</span>{% endif %}
+    {% else %}
+      <div class="state-step">○ {{ label }}</div>{% if not loop.last %}<span class="arrow">›</span>{% endif %}
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% if siparis.fatura_gerekli %}
+<div class="flash flash-warning">⚠️ Sevk edildi ama fatura kesilmedi!
+  <form method="post" action="/siparis/{{ siparis.id }}/fatura-olustur" style="display:inline;margin-left:10px;">
+    <button class="btn btn-warn btn-sm">🧾 Hemen Fatura Kes</button>
+  </form>
+</div>
+{% endif %}
+
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+  {% if siparis.durum == '00_TASLAK' %}
+  <form method="post" action="/siparis/{{ siparis.id }}/onayla">
+    <button class="btn btn-ok">✅ Onayla (ATP Check)</button>
+  </form>
+  {% endif %}
+  {% if siparis.durum == '01_ONAYLANDI' %}
+  <form method="post" action="/siparis/{{ siparis.id }}/picking">
+    <button class="btn btn-p">📦 Picking Başlat (Stok Düş + GL)</button>
+  </form>
+  {% endif %}
+  {% if siparis.durum == '02_PICKING' %}
+  <form method="post" action="/siparis/{{ siparis.id }}/sevk">
+    <button class="btn btn-a">🚚 Sevk Et</button>
+  </form>
+  {% endif %}
+  {% if siparis.durum == '03_SEVK' and not siparis.fatura %}
+  <form method="post" action="/siparis/{{ siparis.id }}/fatura-olustur">
+    <button class="btn btn-warn">🧾 Fatura Oluştur</button>
+  </form>
+  {% endif %}
+  {% if siparis.fatura %}
+  <a href="/fatura/{{ siparis.fatura.id }}" class="btn btn-g">🧾 Faturayı Gör</a>
+  {% endif %}
+  {% if siparis.durum not in ['04_FATURALAND','XX_IPTAL'] %}
+  <form method="post" action="/siparis/{{ siparis.id }}/iptal" onsubmit="return confirm('İptal?')">
+    <button class="btn btn-err">❌ İptal</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="dg">
+  <div class="dc">
+    <h3>Sipariş Bilgileri</h3>
+    <div class="dr"><span class="lbl">Sipariş No</span><span class="fw">{{ siparis.siparis_no }}</span></div>
+    <div class="dr"><span class="lbl">Oluşturma</span><span>{{ siparis.tarih.strftime('%d.%m.%Y %H:%M') }}</span></div>
+    {% if siparis.sevk_tarihi %}<div class="dr"><span class="lbl">Sevk Tarihi</span><span>{{ siparis.sevk_tarihi.strftime('%d.%m.%Y') }}</span></div>{% endif %}
+    <div class="dr"><span class="lbl">Ödeme Koşulu</span><span>{{ siparis.odeme_kosulu }}</span></div>
+    <div class="dr"><span class="lbl">Durum</span><span class="fw">{{ siparis.durum_label }}</span></div>
+    <div class="dr"><span class="lbl">Fatura</span><span>{% if siparis.fatura %}<span class="badge b-g">{{ siparis.fatura.fatura_no }}</span>{% else %}<span class="badge b-gr">Yok</span>{% endif %}</span></div>
+  </div>
+  <div class="dc">
+    <h3>Müşteri</h3>
+    <div class="dr"><span class="lbl">Ad</span><span class="fw">{{ siparis.musteri.ad }}</span></div>
+    <div class="dr"><span class="lbl">Telefon</span><span>{{ siparis.musteri.telefon }}</span></div>
+    <div class="dr"><span class="lbl">E-posta</span><span>{{ siparis.musteri.email }}</span></div>
+    <div class="dr"><span class="lbl">Kredi Limiti</span><span>{{ "%.0f"|format(siparis.musteri.kredi_limiti|float) }} ₺</span></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-header"><h2>Sipariş Kalemleri</h2></div>
+  <table>
+    <thead><tr><th>Ürün</th><th>Maliyet Yöntemi</th><th>Satış Fiyatı</th><th>COGS/Birim</th><th>Miktar</th><th>Tutar</th><th>Brüt Kâr</th></tr></thead>
+    <tbody>
+    {% for k in siparis.kalemler %}
+    <tr>
+      <td><strong>{{ k.urun.ad }}</strong><br><small class="tm">{{ k.urun.sku }}</small></td>
+      <td><span class="badge b-b">{{ k.urun.maliyet_yontemi }}</span></td>
+      <td>{{ "%.2f"|format(k.birim_fiyat|float) }} ₺</td>
+      <td class="tm">{{ "%.2f"|format(k.maliyet or 0) }} ₺</td>
+      <td>{{ k.miktar|float }}</td>
+      <td class="fw">{{ "%.2f"|format(k.toplam) }} ₺</td>
+      <td style="color:var(--ok);font-weight:600;">{{ "%.2f"|format(k.kar) }} ₺</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#f8fafc;">
+        <td colspan="5" style="text-align:right;padding:11px 14px;font-weight:600;">Toplam</td>
+        <td style="padding:11px 14px;font-weight:700;font-size:15px;color:var(--p);">{{ "%.2f"|format(siparis.toplam) }} ₺</td>
+        <td style="padding:11px 14px;font-weight:700;color:var(--ok);">{{ "%.2f"|format(siparis.kalemler|sum(attribute='kar')) }} ₺</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}

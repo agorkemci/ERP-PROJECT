@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Ürünler{% endblock %}
+{% block page_title %}Ürünler{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header">
+    <h2>📋 Ürün Kataloğu</h2>
+    <div class="acts">
+      <input type="text" id="search" placeholder="Ürün ara..." value="{{ q }}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--tx);font-size:13px;outline:none;width:200px;" onkeyup="if(event.key==='Enter')window.location='/urunler?q='+this.value">
+      <a href="/urunler?view=grid" class="btn btn-ghost btn-sm">▦ Kart</a>
+      <a href="/urunler?view=list" class="btn btn-ghost btn-sm">☰ Liste</a>
+      <a href="/urun/yeni" class="btn btn-p btn-sm">+ Yeni Ürün</a>
+    </div>
+  </div>
+
+  {% set view = request.args.get('view','grid') %}
+
+  {% if view == 'grid' %}
+  <div style="padding:16px;">
+    <div class="product-grid">
+      {% for u in urunler %}
+      <a href="/urun/{{ u.id }}" class="product-card">
+        <div class="product-card-img">
+          {% if u.resim %}
+          <img src="/uploads/{{ u.resim }}" alt="{{ u.ad }}">
+          {% else %}
+          <span>📦</span>
+          {% endif %}
+        </div>
+        <div class="product-card-body">
+          <div class="product-card-name">{{ u.ad }}</div>
+          <div class="product-card-sku">{{ u.sku or '—' }}</div>
+          <div class="product-card-price">{{ "%.2f"|format(u.satis_fiyati|float) }} ₺</div>
+          <div>
+            {% if u.stok <= u.minimum_stok %}
+            <span class="product-card-stock badge b-red">Stok: {{ u.stok }}</span>
+            {% else %}
+            <span class="product-card-stock badge b-green">Stok: {{ u.stok }}</span>
+            {% endif %}
+            <span class="badge b-gray" style="margin-left:4px;font-size:10px;">{{ u.maliyet_yontemi }}</span>
+          </div>
+        </div>
+      </a>
+      {% else %}
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--tx3);">Ürün bulunamadı.</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <table>
+    <thead><tr><th></th><th>Ürün Adı</th><th>SKU</th><th>Tip</th><th>Satış Fiyatı</th><th>Maliyet</th><th>Stok</th><th>Yöntem</th><th></th></tr></thead>
+    <tbody>
+    {% for u in urunler %}
+    <tr>
+      <td>
+        {% if u.resim %}
+        <img src="/uploads/{{ u.resim }}" class="timg">
+        {% else %}<div class="timg-ph">📦</div>{% endif %}
+      </td>
+      <td><span class="fw">{{ u.ad }}</span></td>
+      <td><span class="mono" style="font-size:12px;color:var(--tx3);">{{ u.sku or '—' }}</span></td>
+      <td><span class="badge {% if u.urun_tipi=='HAMMADDE' %}b-amber{% elif u.urun_tipi=='MAMUL' %}b-indigo{% elif u.urun_tipi=='YARI_MAMUL' %}b-teal{% else %}b-gray{% endif %}">{{ u.urun_tipi or 'TİCARİ' }}</span></td>
+      <td class="fw mono">{{ "%.2f"|format(u.satis_fiyati|float) }} ₺</td>
+      <td class="mono" style="color:var(--tx2);">{{ "%.2f"|format(u.mevcut_maliyet|float) }} ₺</td>
+      <td>{% if u.stok <= u.minimum_stok %}<span class="badge b-red">{{ u.stok }}</span>{% else %}<span class="badge b-green">{{ u.stok }}</span>{% endif %}</td>
+      <td><span class="badge b-indigo">{{ u.maliyet_yontemi }}</span></td>
+      <td style="display:flex;gap:6px;">
+        <a href="/urun/{{ u.id }}" class="btn btn-ghost btn-sm">Detay</a>
+        <a href="/urun/{{ u.id }}/duzenle" class="btn btn-ghost btn-sm">Düzenle</a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Tedarikçiler{% endblock %}
+{% block page_title %}Tedarikçiler{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header"><h2>Tedarikçi Listesi</h2><a href="/tedarikci/yeni" class="btn btn-primary btn-sm">+ Yeni Tedarikçi</a></div>
+  <table>
+    <thead><tr><th>Ad</th><th>Telefon</th><th>E-posta</th><th>Vergi No</th><th>PO Sayısı</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tedarikciler %}
+    <tr>
+      <td class="fw-bold">{{ t.ad }}</td>
+      <td>{{ t.telefon }}</td><td>{{ t.email }}</td><td>{{ t.vergi_no }}</td>
+      <td>{{ t.po_listesi|length }}</td>
+      <td><a href="/tedarikci/{{ t.id }}/duzenle" class="btn btn-ghost btn-sm">Düzenle</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted);">Tedarikçi yok</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}BOM — {{ bom.mamul.ad }}{% endblock %}
+{% block page_title %}BOM — {{ bom.mamul.ad }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;gap:8px;margin-bottom:18px;">
+  <a href="/uretim/emir/yeni" class="btn btn-p">🏭 Üretim Emri Oluştur</a>
+  <a href="/uretim/bom" class="btn btn-ghost">← Geri</a>
+</div>
+
+<div class="dg">
+  <div class="dc">
+    <h3>BOM Bilgileri</h3>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+      {% if bom.mamul.resim %}
+      <img src="/uploads/{{ bom.mamul.resim }}" style="width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--border);">
+      {% else %}
+      <div style="width:64px;height:64px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;">📦</div>
+      {% endif %}
+      <div>
+        <div class="fw" style="font-size:15px;">{{ bom.mamul.ad }}</div>
+        <div class="mono" style="font-size:12px;color:var(--tx3);">{{ bom.mamul.sku or '—' }}</div>
+        <span class="badge b-indigo" style="margin-top:4px;">v{{ bom.versiyon }}</span>
+      </div>
+    </div>
+    <div class="dr"><span class="lbl">Açıklama</span><span>{{ bom.aciklama or '—' }}</span></div>
+    <div class="dr"><span class="lbl">Oluşturma</span><span>{{ bom.olusturma.strftime('%d.%m.%Y') }}</span></div>
+  </div>
+  <div class="dc">
+    <h3>Maliyet Analizi</h3>
+    <div class="dr"><span class="lbl">Hammadde Sayısı</span><span class="fw">{{ bom.kalemler|length }} kalem</span></div>
+    <div class="dr"><span class="lbl">Tahmini Birim Maliyet</span><span class="fw mono" style="color:var(--p2);">{{ "%.2f"|format(bom.toplam_maliyet|float) }} ₺</span></div>
+    <div class="dr"><span class="lbl">Satış Fiyatı</span><span class="mono">{{ "%.2f"|format(bom.mamul.satis_fiyati|float) }} ₺</span></div>
+    <div class="dr">
+      <span class="lbl">Brüt Kâr Marjı</span>
+      <span class="fw" style="color:var(--green2);">
+        {{ "%.2f"|format(bom.mamul.satis_fiyati|float - bom.toplam_maliyet|float) }} ₺
+        (%{{ "%.1f"|format((bom.mamul.satis_fiyati|float - bom.toplam_maliyet|float) / bom.mamul.satis_fiyati|float * 100 if bom.mamul.satis_fiyati|float else 0) }})
+      </span>
+    </div>
+    {% set max_lt = bom.kalemler|map(attribute='lead_time_gun')|max if bom.kalemler else 0 %}
+    <div class="dr"><span class="lbl">En Uzun Lead Time</span><span class="badge b-amber">{{ max_lt }} gün</span></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-header"><h2>📐 Hammadde Kalemleri</h2></div>
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Hammadde</th>
+        <th>Miktar / Adet</th>
+        <th>Fire %</th>
+        <th>Net Miktar</th>
+        <th>Lead Time</th>
+        <th>Mevcut Stok</th>
+        <th>Birim Maliyet</th>
+        <th>Toplam</th>
+        <th>Durum</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for k in bom.kalemler %}
+    <tr>
+      <td>
+        {% if k.hammadde.resim %}
+        <img src="/uploads/{{ k.hammadde.resim }}" class="timg">
+        {% else %}<div class="timg-ph">📦</div>{% endif %}
+      </td>
+      <td>
+        <div class="fw">{{ k.hammadde.ad }}</div>
+        <div class="mono" style="font-size:11px;color:var(--tx3);">{{ k.hammadde.sku or '' }}</div>
+        {% if k.notlar %}<div style="font-size:11px;color:var(--tx3);margin-top:2px;">📝 {{ k.notlar }}</div>{% endif %}
+      </td>
+      <td class="mono">{{ k.miktar|float }}</td>
+      <td>{% if k.fire_yuzdesi|float > 0 %}<span class="badge b-amber">%{{ k.fire_yuzdesi|float }}</span>{% else %}<span class="tm">—</span>{% endif %}</td>
+      <td class="fw mono">{{ "%.3f"|format(k.net_miktar|float) }}</td>
+      <td>
+        {% if k.lead_time_gun > 0 %}
+        <span class="badge {% if k.lead_time_gun > 7 %}b-red{% elif k.lead_time_gun > 3 %}b-amber{% else %}b-green{% endif %}">
+          {{ k.lead_time_gun }} gün
+        </span>
+        {% else %}<span class="badge b-gray">—</span>{% endif %}
+      </td>
+      {% set eksik = k.hammadde.stok < k.net_miktar|float %}
+      <td class="{{ 'fw' if eksik else '' }}" {% if eksik %}style="color:var(--red2)"{% endif %}>
+        {{ k.hammadde.stok }} {{ k.hammadde.birim }}
+      </td>
+      <td class="mono tm">{{ "%.4f"|format(k.hammadde.mevcut_maliyet|float) }} ₺</td>
+      <td class="fw mono">{{ "%.2f"|format(k.net_miktar|float * k.hammadde.mevcut_maliyet|float) }} ₺</td>
+      <td>
+        {% if k.hammadde.stok >= k.net_miktar|float %}
+        <span class="badge b-green">✓ Yeterli</span>
+        {% else %}
+        <span class="badge b-red">✗ Eksik {{ "%.0f"|format(k.net_miktar|float - k.hammadde.stok) }}</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:var(--bg3);">
+        <td colspan="8" style="text-align:right;padding:12px 16px;font-weight:600;color:var(--tx2);">Toplam Birim Maliyet</td>
+        <td colspan="2" style="padding:12px 16px;font-weight:700;font-size:15px;color:var(--p2);font-family:'DM Mono',monospace;">{{ "%.2f"|format(bom.toplam_maliyet|float) }} ₺</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}

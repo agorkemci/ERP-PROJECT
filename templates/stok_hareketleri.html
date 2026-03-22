@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Stok Hareketleri{% endblock %}
+{% block page_title %}Stok Hareketleri{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header"><h2>Son 100 Hareket</h2></div>
+  <table>
+    <thead><tr><th>Tarih</th><th>Ürün</th><th>Tür</th><th>Miktar</th><th>Açıklama</th></tr></thead>
+    <tbody>
+    {% for h in hareketler %}
+    <tr>
+      <td class="text-muted">{{ h.tarih.strftime('%d.%m.%Y %H:%M') }}</td>
+      <td class="fw-bold">{{ h.urun.ad }}</td>
+      <td>{% if h.tur=='Giriş' %}<span class="badge b-green">⬆ {{ h.tur }}</span>{% else %}<span class="badge b-red">⬇ {{ h.tur }}</span>{% endif %}</td>
+      <td class="fw-bold">{{ h.miktar|float }}</td>
+      <td class="text-muted">{{ h.aciklama }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted);">Hareket bulunamadı</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}{{ po.po_no }}{% endblock %}
+{% block page_title %}{{ po.po_no }} — Procure-to-Pay{% endblock %}
+{% block content %}
+
+<!-- P2P State Flow -->
+<div class="state-flow">
+  {% set po_flow = [('TASLAK','PR Taslak'),('ONAYLANDI','PO Onay'),('GONDERILDI','Gönderildi'),('TESLIM_ALINDI','GRN'),('FATURA_ESLESTI','3-Way Match'),('ODENDI','Ödendi')] %}
+  {% for code, label in po_flow %}
+    {% if po.durum == code %}<div class="state-step active">● {{ label }}</div>
+    {% elif po.durum == 'IPTAL' %}<div class="state-step cancelled">❌</div>
+    {% else %}<div class="state-step">○ {{ label }}</div>{% endif %}
+    {% if not loop.last %}<span class="arrow">›</span>{% endif %}
+  {% endfor %}
+</div>
+
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+  {% if po.durum == 'TASLAK' %}
+  <form method="post" action="/satin-alma/{{ po.id }}/onayla">
+    <button class="btn btn-ok">✅ PR → PO Dönüştür</button>
+  </form>
+  {% endif %}
+  {% if po.durum == 'ONAYLANDI' %}
+  <form method="post" action="/satin-alma/{{ po.id }}/gonder">
+    <button class="btn btn-p">📤 Tedarikçiye Gönder</button>
+  </form>
+  {% endif %}
+  {% if po.durum == 'GONDERILDI' %}
+  <form method="post" action="/satin-alma/{{ po.id }}/grn">
+    <button class="btn btn-ok">📦 GRN — Malları Teslim Al (Stok + GL)</button>
+  </form>
+  {% endif %}
+  {% if po.durum == 'TESLIM_ALINDI' and not po.vendor_invoice %}
+  <button class="btn btn-warn" onclick="document.getElementById('vi-form').style.display='block'">🧾 Vendor Invoice Gir (3-Way Match)</button>
+  {% endif %}
+  {% if po.durum == 'FATURA_ESLESTI' %}
+  <form method="post" action="/satin-alma/{{ po.id }}/odendi">
+    <button class="btn btn-a">💰 Öde (GL: AP → Kasa)</button>
+  </form>
+  {% endif %}
+  {% if po.durum not in ['TESLIM_ALINDI','FATURA_ESLESTI','ODENDI','IPTAL'] %}
+  <form method="post" action="/satin-alma/{{ po.id }}/iptal" onsubmit="return confirm('İptal?')">
+    <button class="btn btn-err">❌ İptal</button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- 3-Way Match Vendor Invoice Form -->
+{% if po.durum == 'TESLIM_ALINDI' and not po.vendor_invoice %}
+<div id="vi-form" style="display:none;background:var(--sf);border:1px solid var(--br);border-radius:10px;padding:18px;margin-bottom:16px;">
+  <p style="font-size:13px;font-weight:600;margin-bottom:12px;">🔺 3-Way Match: PO Fiyat + GRN Miktar + Vendor Invoice</p>
+  <p class="tm" style="font-size:12px;margin-bottom:12px;">PO Toplam: <strong>{{ "%.2f"|format(po.toplam) }} ₺</strong> — %5 tolerans uygulanır</p>
+  <form method="post" action="/satin-alma/{{ po.id }}/vendor-invoice">
+    <div class="fr" style="max-width:500px;">
+      <div class="fg"><label>Vendor Invoice No</label><input name="invoice_no" placeholder="INV-2026-001"></div>
+      <div class="fg"><label>Fatura Tutarı (₺)</label><input name="invoice_tutar" type="number" step="0.01" required value="{{ "%.2f"|format(po.toplam) }}"></div>
+    </div>
+    <button class="btn btn-p" type="submit">3-Way Match Uygula</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="dg">
+  <div class="dc">
+    <h3>PO Bilgileri</h3>
+    <div class="dr"><span class="lbl">PO No</span><span class="fw">{{ po.po_no }}</span></div>
+    <div class="dr"><span class="lbl">Tarih</span><span>{{ po.tarih.strftime('%d.%m.%Y %H:%M') }}</span></div>
+    {% if po.grn_tarihi %}<div class="dr"><span class="lbl">GRN Tarihi</span><span>{{ po.grn_tarihi.strftime('%d.%m.%Y') }}</span></div>{% endif %}
+    <div class="dr"><span class="lbl">Tip</span><span>{% if po.otomatik %}<span class="badge b-t">MRP Otomatik</span>{% else %}<span class="badge b-gr">Manuel</span>{% endif %}</span></div>
+    <div class="dr"><span class="lbl">Durum</span><span class="fw">{{ po.durum_label }}</span></div>
+    {% if po.vendor_invoice %}
+    <div class="dr"><span class="lbl">3-Way Match</span><span>
+      {% if po.vendor_invoice.match_durumu == 'Eşleşti' %}<span class="badge b-g">✓ Eşleşti</span>
+      {% else %}<span class="badge b-r">✗ Bloklandı</span>{% endif %}
+    </span></div>
+    {% endif %}
+  </div>
+  <div class="dc">
+    <h3>Tedarikçi</h3>
+    {% if po.tedarikci %}
+    <div class="dr"><span class="lbl">Ad</span><span class="fw">{{ po.tedarikci.ad }}</span></div>
+    <div class="dr"><span class="lbl">Telefon</span><span>{{ po.tedarikci.telefon }}</span></div>
+    <div class="dr"><span class="lbl">E-posta</span><span>{{ po.tedarikci.email }}</span></div>
+    {% else %}<p class="tm" style="font-size:13px;padding:8px 0;">Tedarikçi belirtilmemiş</p>{% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-header"><h2>PO Kalemleri (Header → Lines)</h2></div>
+  <table>
+    <thead><tr><th>Ürün</th><th>Maliyet Yöntemi</th><th>Sipariş Miktarı</th><th>Teslim Edilen</th><th>Birim Maliyet</th><th>Toplam</th></tr></thead>
+    <tbody>
+    {% for k in po.kalemler %}
+    <tr>
+      <td><strong>{{ k.urun.ad }}</strong><br><small class="tm">{{ k.urun.sku }}</small></td>
+      <td><span class="badge b-b">{{ k.urun.maliyet_yontemi }}</span></td>
+      <td>{{ k.miktar|float }} {{ k.urun.birim }}</td>
+      <td>{% if k.teslim_miktar > 0 %}<span class="badge b-g">{{ k.teslim_miktar }}</span>{% else %}<span class="badge b-gr">—</span>{% endif %}</td>
+      <td>{{ "%.4f"|format(k.birim_maliyet|float) }} ₺</td>
+      <td class="fw">{{ "%.2f"|format(k.miktar|float * k.birim_maliyet|float) }} ₺</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#f8fafc;">
+        <td colspan="5" style="text-align:right;padding:11px 14px;font-weight:600;">Toplam</td>
+        <td style="padding:11px 14px;font-weight:700;color:var(--p);">{{ "%.2f"|format(po.toplam) }} ₺</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+{% if po.vendor_invoice %}
+<div class="panel">
+  <div class="panel-header"><h2>Vendor Invoice — 3-Way Match Sonucu</h2></div>
+  <div style="padding:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+      <div style="background:#f8fafc;border-radius:8px;padding:14px;text-align:center;">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:6px;">Purchase Order (Fiyat)</div>
+        <div style="font-size:18px;font-weight:700;color:var(--p);">{{ "%.2f"|format(po.toplam) }} ₺</div>
+      </div>
+      <div style="background:#f8fafc;border-radius:8px;padding:14px;text-align:center;">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:6px;">GRN (Miktar) ✓</div>
+        <div style="font-size:18px;font-weight:700;color:var(--ok);">Teslim Alındı</div>
+      </div>
+      <div style="background:#f8fafc;border-radius:8px;padding:14px;text-align:center;">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:6px;">Vendor Invoice ({{ po.vendor_invoice.invoice_no }})</div>
+        <div style="font-size:18px;font-weight:700;color:var(--p);">{{ "%.2f"|format(po.vendor_invoice.toplam_tutar|float) }} ₺</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:10px;border-radius:8px;background:{% if po.vendor_invoice.match_durumu=='Eşleşti' %}#f0fdf4{% else %}#fef2f2{% endif %};">
+      <strong>Sonuç:</strong> {% if po.vendor_invoice.match_durumu=='Eşleşti' %}✅ 3-Way Match başarılı — Ödeme onaylandı{% else %}❌ 3-Way Match başarısız — Fatura bloklandı{% endif %}
+      <br><small class="tm">{{ po.vendor_invoice.notlar }}</small>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Yeni Üretim Emri{% endblock %}
+{% block page_title %}Yeni Üretim Emri{% endblock %}
+{% block content %}
+<div class="fc">
+  <form method="post">
+    <div class="fs">Üretim Bilgileri</div>
+    <div class="fr">
+      <div class="fg"><label>BOM Seç (mamul + reçete) *</label>
+        <select name="bom_id" required onchange="bomSecildi(this)">
+          <option value="">— BOM Seçin —</option>
+          {% for bom in bomlar %}
+          <option value="{{ bom.id }}" data-mamul="{{ bom.mamul.ad }}" data-maliyet="{{ bom.toplam_maliyet|float }}">
+            {{ bom.mamul.ad }} — v{{ bom.versiyon }} ({{ bom.kalemler|length }} hammadde)
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg"><label>Üretim Miktarı *</label>
+        <input name="uretim_miktari" type="number" min="1" required placeholder="Kaç adet üretilecek?" oninput="maliyetHesapla()">
+      </div>
+    </div>
+    <div class="fg"><label>Notlar</label>
+      <input name="notlar" placeholder="Üretim notu (isteğe bağlı)">
+    </div>
+
+    <div id="maliyet-ozet" style="display:none;margin-top:10px;padding:14px;background:#f8fafc;border-radius:8px;border:1px solid var(--br);">
+      <p style="font-size:12px;color:var(--mu);margin-bottom:8px;">Tahmini Üretim Maliyeti</p>
+      <div style="display:flex;justify-content:space-between;font-size:14px;">
+        <span>Birim maliyet: <strong id="birim-mal">—</strong></span>
+        <span>Toplam: <strong id="toplam-mal" style="color:var(--p);">—</strong></span>
+      </div>
+    </div>
+
+    <div class="fa">
+      <button class="btn btn-p" type="submit">🏭 Üretim Emri Oluştur</button>
+      <a href="/uretim/emirler" class="btn btn-g">İptal</a>
+    </div>
+  </form>
+</div>
+
+<script>
+const bomMaliyetleri = {
+  {% for bom in bomlar %}"{{ bom.id }}": {{ bom.toplam_maliyet|float }},{% endfor %}
+};
+function bomSecildi(sel) { maliyetHesapla(); }
+function maliyetHesapla() {
+  const bid = document.querySelector('[name=bom_id]').value;
+  const mik = parseInt(document.querySelector('[name=uretim_miktari]').value) || 0;
+  if (bid && mik && bomMaliyetleri[bid]) {
+    const birim = bomMaliyetleri[bid];
+    document.getElementById('birim-mal').textContent = birim.toFixed(2) + ' ₺';
+    document.getElementById('toplam-mal').textContent = (birim * mik).toFixed(2) + ' ₺';
+    document.getElementById('maliyet-ozet').style.display = 'block';
+  }
+}
+</script>
+{% endblock %}

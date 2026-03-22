@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Audit Trail{% endblock %}
+{% block page_title %}Audit Trail — Who, What, When{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header"><h2>Audit Log — Slide 14: Traceability</h2></div>
+  <table>
+    <thead><tr><th>Tarih</th><th>Tablo</th><th>Kayıt ID</th><th>Aksiyon</th><th>Eski</th><th>Yeni</th><th>Açıklama</th></tr></thead>
+    <tbody>
+    {% for a in kayitlar %}
+    <tr>
+      <td class="tm">{{ a.tarih.strftime('%d.%m.%Y %H:%M') }}</td>
+      <td><span class="badge b-gr">{{ a.tablo }}</span></td>
+      <td class="tm">#{{ a.kayit_id }}</td>
+      <td><span class="badge {% if 'CREATE' in a.aksiyon %}b-g{% elif 'DELETE' in a.aksiyon or 'IPTAL' in a.aksiyon %}b-r{% elif 'PAYMENT' in a.aksiyon %}b-t{% elif 'MATCH' in a.aksiyon %}b-p{% else %}b-b{% endif %}">{{ a.aksiyon }}</span></td>
+      <td class="tm">{{ a.eski_deger }}</td>
+      <td class="tm">{{ a.yeni_deger }}</td>
+      <td class="tm" style="font-size:12px;">{{ a.aciklama }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

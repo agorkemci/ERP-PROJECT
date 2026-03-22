@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Üretim Emirleri{% endblock %}
+{% block page_title %}Üretim Emirleri{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header">
+    <h2>Üretim Emri Listesi</h2>
+    <div class="acts">
+      <div style="display:flex;gap:6px;">
+        {% for code,label in ue_states.items() %}
+        <a href="/uretim/emirler?durum={{ code }}" class="btn btn-sm {{ 'btn-p' if durum==code else 'btn-g' }}">{{ label }}</a>
+        {% endfor %}
+        <a href="/uretim/emirler" class="btn btn-sm {{ 'btn-p' if not durum else 'btn-g' }}">Tümü</a>
+      </div>
+      <a href="/uretim/emir/yeni" class="btn btn-p btn-sm">+ Yeni Emir</a>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>UE No</th><th>Mamul</th><th>Miktar</th><th>BOM</th><th>Toplam Maliyet</th><th>MRP</th><th>Durum</th><th></th></tr></thead>
+    <tbody>
+    {% for ue in emirler %}
+    <tr>
+      <td class="fw">{{ ue.ue_no }}</td>
+      <td>{{ ue.mamul.ad }}</td>
+      <td>{{ ue.uretim_miktari }} {{ ue.mamul.birim }}</td>
+      <td class="tm">v{{ ue.bom.versiyon }}</td>
+      <td class="fw">{{ "%.2f"|format(ue.toplam_maliyet|float) }} ₺</td>
+      <td>{% if ue.mrp_kaynagi %}<span class="badge b-t">MRP</span>{% else %}<span class="badge b-gr">Manuel</span>{% endif %}</td>
+      <td>
+        {% if ue.durum=='TASLAK' %}<span class="badge b-gr">{{ ue.durum_label }}</span>
+        {% elif ue.durum=='PLANLI' %}<span class="badge b-b">{{ ue.durum_label }}</span>
+        {% elif ue.durum=='URETIMDE' %}<span class="badge b-o">{{ ue.durum_label }}</span>
+        {% elif ue.durum=='TAMAMLANDI' %}<span class="badge b-g">{{ ue.durum_label }}</span>
+        {% else %}<span class="badge b-r">{{ ue.durum_label }}</span>{% endif %}
+      </td>
+      <td><a href="/uretim/emir/{{ ue.id }}" class="btn btn-g btn-sm">Detay</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--mu);">Üretim emri yok.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

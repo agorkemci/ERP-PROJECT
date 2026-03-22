@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Yeni Sipariş{% endblock %}
+{% block page_title %}Yeni Sipariş{% endblock %}
+{% block content %}
+<div class="form-wrap" style="max-width:900px;">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Müşteri *</label>
+        <select name="musteri_id" required>
+          <option value="">-- Müşteri Seçin --</option>
+          {% for m in musteriler %}<option value="{{ m.id }}">{{ m.ad }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notlar</label>
+        <input name="notlar" placeholder="Sipariş notu (isteğe bağlı)">
+      </div>
+    </div>
+
+    <h3 style="margin:16px 0 12px;font-size:15px;color:#1e3a5f;">Sipariş Kalemleri</h3>
+    <div id="kalemler">
+      <div class="siparis-satir">
+        <select name="urun_id" onchange="fiyatGuncelle(this)">
+          <option value="">-- Ürün Seçin --</option>
+          {% for u in urunler %}<option value="{{ u.id }}" data-fiyat="{{ u.satis_fiyati|float }}" data-stok="{{ u.stok }}">{{ u.ad }} (Stok: {{ u.stok }}) — {{ "%.2f"|format(u.satis_fiyati|float) }} ₺</option>{% endfor %}
+        </select>
+        <input type="number" name="miktar" min="1" placeholder="Miktar" oninput="toplamHesapla()">
+        <span class="fiyat-goster" style="font-size:13px;color:#666;">—</span>
+        <button type="button" onclick="satirSil(this)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#dc3545;">×</button>
+      </div>
+    </div>
+    <button type="button" onclick="satirEkle()" class="btn btn-outline btn-sm" style="margin-top:8px;">+ Satır Ekle</button>
+
+    <div style="margin-top:16px;padding:12px;background:#f8f9fa;border-radius:8px;text-align:right;">
+      <strong>Toplam: <span id="toplam">0.00</span> ₺</strong>
+    </div>
+
+    <div class="form-actions" style="margin-top:16px;">
+      <button class="btn btn-primary" type="submit">📦 Siparişi Oluştur</button>
+      <a href="/siparisler" class="btn btn-outline">İptal</a>
+    </div>
+  </form>
+</div>
+<script>
+const urunler = { {% for u in urunler %}"{{ u.id }}": { fiyat: {{ u.satis_fiyati|float }}, stok: {{ u.stok }} }, {% endfor %} };
+
+function fiyatGuncelle(sel) {
+  const satir = sel.closest('.siparis-satir');
+  const id = sel.value;
+  const label = satir.querySelector('.fiyat-goster');
+  if (id && urunler[id]) {
+    label.textContent = urunler[id].satis_fiyati.toFixed(2) + ' ₺/adet';
+  } else { label.textContent = '—'; }
+  toplamHesapla();
+}
+
+function toplamHesapla() {
+  let toplam = 0;
+  document.querySelectorAll('.siparis-satir').forEach(s => {
+    const uid = s.querySelector('select').value;
+    const mik = parseInt(s.querySelector('input').value) || 0;
+    if (uid && urunler[uid]) toplam += urunler[uid].satis_fiyati * mik;
+  });
+  document.getElementById('toplam').textContent = toplam.toFixed(2);
+}
+
+function satirEkle() {
+  const ilk = document.querySelector('.siparis-satir');
+  const yeni = ilk.cloneNode(true);
+  yeni.querySelector('select').value = '';
+  yeni.querySelector('input').value = '';
+  yeni.querySelector('.fiyat-goster').textContent = '—';
+  yeni.querySelector('select').onchange = function(){ fiyatGuncelle(this); };
+  yeni.querySelector('input').oninput = toplamHesapla;
+  yeni.querySelector('button').onclick = function(){ satirSil(this); };
+  document.getElementById('kalemler').appendChild(yeni);
+}
+
+function satirSil(btn) {
+  const satirlar = document.querySelectorAll('.siparis-satir');
+  if (satirlar.length > 1) { btn.closest('.siparis-satir').remove(); toplamHesapla(); }
+}
+</script>
+{% endblock %}

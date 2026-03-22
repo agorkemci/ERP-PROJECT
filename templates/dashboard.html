@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — TopTan ERP{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+{% if fatura_gerekli %}
+<div class="flash flash-warning">⚠️ <strong>{{ fatura_gerekli|length }} sipariş</strong> sevk edildi, fatura kesilmedi:
+  {% for s in fatura_gerekli %}<a href="/siparis/{{ s.id }}" style="color:var(--amber2);font-weight:600;">{{ s.siparis_no }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+{% if kritik_stok %}
+<div class="flash flash-danger">📦 <strong>{{ kritik_stok|length }} ürün</strong> kritik stok seviyesinde:
+  {% for u in kritik_stok %}<a href="/urun/{{ u.id }}" style="color:var(--red2);font-weight:600;">{{ u.ad }}</a> ({{ u.stok }}){% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+<div class="cards">
+  <div class="card c-indigo">
+    <div class="card-icon">👥</div>
+    <div class="card-val">{{ toplam_musteri }}</div>
+    <div class="card-label">Müşteri</div>
+  </div>
+  <div class="card c-teal">
+    <div class="card-icon">📦</div>
+    <div class="card-val">{{ toplam_siparis }}</div>
+    <div class="card-label">Toplam Sipariş</div>
+    <div class="card-sub">{{ bekleyen }} taslak · {{ picking }} picking</div>
+  </div>
+  <div class="card c-amber">
+    <div class="card-icon">🧾</div>
+    <div class="card-val">{{ fatura_gerekli|length }}</div>
+    <div class="card-label">Fatura Bekleyen</div>
+    <div class="card-sub warn">Sevk edildi, fatura yok</div>
+  </div>
+  <div class="card c-red">
+    <div class="card-icon">💰</div>
+    <div class="card-val">{{ odenmemis }}</div>
+    <div class="card-label">Ödenmemiş Fatura</div>
+    <div class="card-sub warn">{{ "%.0f"|format(odenmemis_tutar) }} ₺</div>
+  </div>
+  <div class="card c-green">
+    <div class="card-icon">🛒</div>
+    <div class="card-val">{{ bekleyen_po }}</div>
+    <div class="card-label">Aktif PO</div>
+  </div>
+  <div class="card c-red">
+    <div class="card-icon">⚠️</div>
+    <div class="card-val">{{ kritik_stok|length }}</div>
+    <div class="card-label">Kritik Stok</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.6fr 1fr;gap:18px;">
+  <div>
+    <div class="panel">
+      <div class="panel-header">
+        <h2>📦 Son Siparişler</h2>
+        <a href="/siparis/yeni" class="btn btn-p btn-sm">+ Yeni Sipariş</a>
+      </div>
+      <table>
+        <thead><tr><th></th><th>Sipariş No</th><th>Müşteri</th><th>Tutar</th><th>Fatura</th><th>Durum</th><th></th></tr></thead>
+        <tbody>
+        {% for s in son_siparisler %}
+        <tr>
+          <td>
+            {% if s.musteri.resim %}
+            <img src="/uploads/{{ s.musteri.resim }}" class="timg">
+            {% else %}<div class="timg-ph">👤</div>{% endif %}
+          </td>
+          <td><span class="fw mono">{{ s.siparis_no }}</span></td>
+          <td>{{ s.musteri.ad }}</td>
+          <td class="fw mono">{{ "%.0f"|format(s.toplam) }} ₺</td>
+          <td>{% if s.fatura_gerekli %}<span class="badge b-amber">⚠ Gerekli</span>{% elif s.fatura %}<span class="badge b-green">✓</span>{% else %}<span class="badge b-gray">—</span>{% endif %}</td>
+          <td>
+            {% if s.durum=='00_TASLAK' %}<span class="badge b-gray">Taslak</span>
+            {% elif s.durum=='01_ONAYLANDI' %}<span class="badge b-indigo">Onaylandı</span>
+            {% elif s.durum=='02_PICKING' %}<span class="badge b-amber">Hazırlanıyor</span>
+            {% elif s.durum=='03_SEVK' %}<span class="badge b-teal">Sevk Edildi</span>
+            {% elif s.durum=='04_FATURALAND' %}<span class="badge b-green">Faturalandı</span>
+            {% else %}<span class="badge b-red">İptal</span>{% endif %}
+          </td>
+          <td><a href="/siparis/{{ s.id }}" class="btn btn-ghost btn-sm">Detay</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h2>📒 GL Kayıtları</h2>
+        <a href="/genel-defter" class="btn btn-ghost btn-sm">Tümü</a>
+      </div>
+      <table>
+        <thead><tr><th>Tarih</th><th>Hesap</th><th>Borç</th><th>Alacak</th><th>Ref</th></tr></thead>
+        <tbody>
+        {% for g in son_gl %}
+        <tr>
+          <td class="tm mono" style="font-size:11px;">{{ g.tarih.strftime('%d.%m %H:%M') }}</td>
+          <td><span class="badge {% if 'COGS' in g.hesap %}b-red{% elif 'Stok' in g.hesap %}b-indigo{% elif 'Alacak' in g.hesap %}b-green{% elif 'Kasa' in g.hesap %}b-teal{% else %}b-gray{% endif %}">{{ g.hesap }}</span></td>
+          <td class="fw mono" style="color:var(--red2);">{% if g.borc > 0 %}{{ "%.0f"|format(g.borc) }} ₺{% endif %}</td>
+          <td class="fw mono" style="color:var(--green2);">{% if g.alacak > 0 %}{{ "%.0f"|format(g.alacak) }} ₺{% endif %}</td>
+          <td class="tm" style="font-size:11px;">{{ g.ref_tip }}-{{ g.ref_id }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <div class="panel-header">
+        <h2>🛒 Son PO'lar</h2>
+        <a href="/satin-alma/yeni" class="btn btn-teal btn-sm">+ PO</a>
+      </div>
+      <table>
+        <thead><tr><th>PO No</th><th>Tutar</th><th>Durum</th></tr></thead>
+        <tbody>
+        {% for po in son_po %}
+        <tr>
+          <td><a href="/satin-alma/{{ po.id }}" class="fw" style="color:var(--p2);text-decoration:none;">{{ po.po_no }}</a>
+          {% if po.otomatik %}<span class="badge b-teal" style="margin-left:4px;font-size:10px;">MRP</span>{% endif %}</td>
+          <td class="mono">{{ "%.0f"|format(po.toplam) }} ₺</td>
+          <td>
+            {% if po.durum in ['TESLIM_ALINDI','FATURA_ESLESTI'] %}<span class="badge b-green">{{ po.durum_label }}</span>
+            {% elif po.durum=='ODENDI' %}<span class="badge b-teal">Ödendi</span>
+            {% elif po.durum in ['TASLAK','ONAYLANDI'] %}<span class="badge b-amber">{{ po.durum_label }}</span>
+            {% else %}<span class="badge b-gray">{{ po.durum_label }}</span>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" style="text-align:center;padding:20px;color:var(--tx3);">PO yok</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Kritik stok ürünleri -->
+    {% if kritik_stok %}
+    <div class="panel">
+      <div class="panel-header"><h2>⚠️ Kritik Stok</h2></div>
+      <div style="padding:12px;">
+        {% for u in kritik_stok %}
+        <a href="/urun/{{ u.id }}" style="text-decoration:none;display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;transition:.15s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">
+          {% if u.resim %}
+          <img src="/uploads/{{ u.resim }}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid var(--border);">
+          {% else %}<div style="width:36px;height:36px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;">📦</div>{% endif %}
+          <div style="flex:1;">
+            <div style="font-size:13px;color:var(--tx);font-weight:500;">{{ u.ad }}</div>
+            <div style="font-size:11px;color:var(--tx3);">Stok: {{ u.stok }} · Min: {{ u.minimum_stok }}</div>
+          </div>
+          <span class="badge b-red">{{ u.stok }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

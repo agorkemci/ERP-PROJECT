@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Fatura {{ fatura.fatura_no }}{% endblock %}
+{% block page_title %}Fatura {{ fatura.fatura_no }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;gap:10px;margin-bottom:20px;">
+  {% if fatura.odeme_durumu == 'Ödenmedi' %}
+  <form method="post" action="/fatura/{{ fatura.id }}/odendi">
+    <button class="btn btn-success">💰 Ödendi Olarak İşaretle</button>
+  </form>
+  {% endif %}
+  <a href="/siparis/{{ fatura.siparis.id }}" class="btn btn-outline">📦 Siparişe Git</a>
+</div>
+
+<div class="detail-grid">
+  <div class="detail-box">
+    <h3>Fatura Bilgileri</h3>
+    <div class="detail-row"><span>Fatura No</span><strong>{{ fatura.fatura_no }}</strong></div>
+    <div class="detail-row"><span>Tarih</span><strong>{{ fatura.tarih.strftime('%d.%m.%Y') }}</strong></div>
+    <div class="detail-row"><span>Sipariş No</span><strong>{{ fatura.siparis.siparis_no }}</strong></div>
+    <div class="detail-row"><span>Ödeme Durumu</span>
+      <strong>{% if fatura.odeme_durumu == 'Ödendi' %}<span class="badge badge-green">{{ fatura.odeme_durumu }}</span>
+      {% else %}<span class="badge badge-red">{{ fatura.odeme_durumu }}</span>{% endif %}</strong>
+    </div>
+  </div>
+  <div class="detail-box">
+    <h3>Müşteri Bilgileri</h3>
+    <div class="detail-row"><span>Ad</span><strong>{{ fatura.siparis.musteri.ad }}</strong></div>
+    <div class="detail-row"><span>Vergi No</span><strong>{{ fatura.siparis.musteri.vergi_no }}</strong></div>
+    <div class="detail-row"><span>Adres</span><strong>{{ fatura.siparis.musteri.adres }}</strong></div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <div class="table-header"><h2>Fatura Detayı</h2></div>
+  <table>
+    <thead><tr><th>Ürün</th><th>Miktar</th><th>Birim Fiyat</th><th>Tutar</th></tr></thead>
+    <tbody>
+    {% for k in fatura.siparis.kalemler %}
+    <tr>
+      <td><strong>{{ k.urun.ad }}</strong></td>
+      <td>{{ k.miktar|float }} {{ k.urun.birim }}</td>
+      <td>{{ "%.2f"|format(k.birim_fiyat|float) }} ₺</td>
+      <td>{{ "%.2f"|format(k.toplam) }} ₺</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="3" style="text-align:right;padding:10px 16px;">Ara Toplam</td><td style="padding:10px 16px;">{{ "%.2f"|format(fatura.ara_toplam|float) }} ₺</td></tr>
+      <tr><td colspan="3" style="text-align:right;padding:10px 16px;">KDV (%{{ (fatura.kdv_orani*100)|int }})</td><td style="padding:10px 16px;">{{ "%.2f"|format(fatura.kdv_tutari|float) }} ₺</td></tr>
+      <tr style="background:#1e3a5f;color:#fff;">
+        <td colspan="3" style="text-align:right;padding:12px 16px;font-weight:700;">GENEL TOPLAM</td>
+        <td style="padding:12px 16px;font-weight:700;font-size:16px;">{{ "%.2f"|format(fatura.genel_toplam|float) }} ₺</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}

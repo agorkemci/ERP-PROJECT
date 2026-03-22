@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Faturalar{% endblock %}
+{% block page_title %}Faturalar{% endblock %}
+{% block content %}
+<div class="table-wrap">
+  <div class="table-header"><h2>Fatura Listesi</h2></div>
+  <table>
+    <thead><tr><th>Fatura No</th><th>Sipariş No</th><th>Müşteri</th><th>Tarih</th><th>Toplam (KDV dahil)</th><th>Ödeme</th><th></th></tr></thead>
+    <tbody>
+    {% for f in faturalar %}
+    <tr>
+      <td><strong>{{ f.fatura_no }}</strong></td>
+      <td>{{ f.siparis.siparis_no }}</td>
+      <td>{{ f.siparis.musteri.ad }}</td>
+      <td>{{ f.tarih.strftime('%d.%m.%Y') }}</td>
+      <td><strong>{{ "%.2f"|format(f.genel_toplam|float) }} ₺</strong></td>
+      <td>
+        {% if f.odeme_durumu == 'Ödendi' %}<span class="badge badge-green">{{ f.odeme_durumu }}</span>
+        {% else %}<span class="badge badge-red">{{ f.odeme_durumu }}</span>{% endif %}
+      </td>
+      <td><a href="/fatura/{{ f.id }}" class="btn btn-outline btn-sm">Detay</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">Fatura bulunamadı</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

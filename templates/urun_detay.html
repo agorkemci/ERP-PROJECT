@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}{{ urun.ad }}{% endblock %}
+{% block page_title %}{{ urun.ad }}{% endblock %}
+{% block content %}
+<div style="display:flex;gap:10px;margin-bottom:16px;">
+  <a href="/urun/{{ urun.id }}/duzenle" class="btn btn-ghost">✏️ Düzenle</a>
+  <a href="/satin-alma/yeni?urun_id={{ urun.id }}" class="btn btn-accent">🛒 Satın Alma Oluştur</a>
+</div>
+
+<div class="detail-grid">
+  <div class="detail-card">
+    <h3>Ürün Bilgileri</h3>
+    <div class="detail-row"><span class="label">Maliyet Yöntemi</span>
+      <strong>
+        {% if urun.maliyet_yontemi=='FIFO' %}<span class="badge b-blue">FIFO</span>
+        {% elif urun.maliyet_yontemi=='LIFO' %}<span class="badge" style="background:#ede9fe;color:#5b21b6;">LIFO</span>
+        {% else %}<span class="badge b-teal">AVERAGE</span>{% endif %}
+      </strong></div>
+    <div class="detail-row"><span class="label">Satış Fiyatı</span><strong>{{ "%.2f"|format(urun.satis_fiyati|float) }} ₺</strong></div>
+    <div class="detail-row"><span class="label">Mevcut Maliyet</span><strong>{{ "%.4f"|format(urun.mevcut_maliyet|float) }} ₺</strong></div>
+    <div class="detail-row"><span class="label">Ortalama Maliyet</span><strong>{{ "%.4f"|format(urun.ortalama_maliyet|float or 0) }} ₺</strong></div>
+    <div class="detail-row"><span class="label">Kar Marjı</span>
+      <strong class="text-success">% {{ "%.1f"|format(((urun.satis_fiyati|float - urun.mevcut_maliyet|float) / urun.satis_fiyati|float * 100) if urun.satis_fiyati|float else 0) }}</strong></div>
+  </div>
+  <div class="detail-card">
+    <h3>Stok Durumu</h3>
+    <div class="detail-row"><span class="label">Mevcut Stok</span>
+      <strong class="{{ 'text-danger' if urun.stok <= urun.minimum_stok else '' }}">{{ urun.stok }} {{ urun.birim }}</strong></div>
+    <div class="detail-row"><span class="label">Minimum Stok</span><strong>{{ urun.minimum_stok }} {{ urun.birim }}</strong></div>
+    <div class="detail-row"><span class="label">Yenileme Miktarı</span><strong>{{ urun.yenileme_miktari }} {{ urun.birim }}</strong></div>
+    <div class="detail-row"><span class="label">Tedarikçi</span>
+      <strong>{{ urun.kategori_obj.ad if urun.kategori_obj else '—' }}</strong></div>
+  </div>
+</div>
+
+<!-- Lot Bilgileri -->
+<div class="panel" style="margin-bottom:16px;">
+  <div class="panel-header"><h2>Stok Lotları ({{ urun.maliyet_yontemi }})</h2></div>
+  <table>
+    <thead><tr><th>Giriş Tarihi</th><th>Kaynak</th><th>Toplam Miktar</th><th>Kalan</th><th>Birim Maliyet</th><th>Durum</th></tr></thead>
+    <tbody>
+    {% for lot in urun.lotlar %}
+    <tr>
+      <td class="text-muted">{{ lot.giris_tarihi.strftime('%d.%m.%Y') }}</td>
+      <td>{{ lot.kaynak }}</td>
+      <td>{{ lot.miktar|float }}</td>
+      <td class="fw-bold {{ 'text-danger' if lot.kalan == 0 else '' }}">{{ lot.kalan }}</td>
+      <td>{{ "%.4f"|format(lot.birim_maliyet|float) }} ₺</td>
+      <td>{% if lot.kalan == 0 %}<span class="badge b-gray">Tükendi</span>
+          {% elif lot.kalan < lot.miktar|float %}<span class="badge b-orange">Kısmen</span>
+          {% else %}<span class="badge b-green">Tam</span>{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">Lot yok</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Stok Hareketleri -->
+<div class="panel">
+  <div class="panel-header"><h2>Son Stok Hareketleri</h2></div>
+  <table>
+    <thead><tr><th>Tarih</th><th>Tür</th><th>Miktar</th><th>Açıklama</th></tr></thead>
+    <tbody>
+    {% for h in hareketler %}
+    <tr>
+      <td class="text-muted">{{ h.tarih.strftime('%d.%m.%Y %H:%M') }}</td>
+      <td>{% if h.tur=='Giriş' %}<span class="badge b-green">⬆ {{ h.tur }}</span>{% else %}<span class="badge b-red">⬇ {{ h.tur }}</span>{% endif %}</td>
+      <td class="fw-bold">{{ h.miktar|float }}</td>
+      <td class="text-muted">{{ h.aciklama }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

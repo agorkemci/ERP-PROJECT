@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}BOM Listesi{% endblock %}
+{% block page_title %}Bill of Materials (BOM){% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header">
+    <h2>BOM Listesi</h2>
+    <a href="/uretim/bom/yeni" class="btn btn-p btn-sm">+ Yeni BOM</a>
+  </div>
+  <table>
+    <thead><tr><th>Mamul Ürün</th><th>SKU</th><th>Versiyon</th><th>Hammadde Sayısı</th><th>Tahmini Birim Maliyet</th><th>Açıklama</th><th></th></tr></thead>
+    <tbody>
+    {% for bom in bomlar %}
+    <tr>
+      <td><strong>{{ bom.mamul.ad }}</strong></td>
+      <td class="tm">{{ bom.mamul.sku }}</td>
+      <td><span class="badge b-b">v{{ bom.versiyon }}</span></td>
+      <td>{{ bom.kalemler|length }} kalem</td>
+      <td class="fw">{{ "%.2f"|format(bom.toplam_maliyet|float) }} ₺</td>
+      <td class="tm">{{ bom.aciklama }}</td>
+      <td>
+        <a href="/uretim/bom/{{ bom.id }}" class="btn btn-g btn-sm">Detay</a>
+        <form method="post" action="/uretim/bom/{{ bom.id }}/sil" style="display:inline" onsubmit="return confirm('Silinsin mi?')">
+          <button class="btn btn-err btn-sm">Sil</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--mu);">Henüz BOM yok. Önce ürün ekleyip BOM oluşturun.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

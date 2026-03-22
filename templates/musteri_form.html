@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Müşteri Düzenle' if musteri else 'Yeni Müşteri' }}{% endblock %}
+{% block page_title %}{{ 'Müşteri Düzenle' if musteri else 'Yeni Müşteri' }}{% endblock %}
+{% block content %}
+<div class="fc">
+  <form method="post" enctype="multipart/form-data">
+    <div style="display:grid;grid-template-columns:1fr 160px;gap:20px;align-items:start;">
+      <div>
+        <div class="fs">Müşteri Bilgileri</div>
+        <div class="fr">
+          <div class="fg"><label>Firma / Ad *</label><input name="ad" value="{{ musteri.ad if musteri else '' }}" required></div>
+          <div class="fg"><label>Vergi No</label><input name="vergi_no" value="{{ musteri.vergi_no if musteri else '' }}"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Telefon</label><input name="telefon" value="{{ musteri.telefon if musteri else '' }}"></div>
+          <div class="fg"><label>E-posta</label><input name="email" type="email" value="{{ musteri.email if musteri else '' }}"></div>
+        </div>
+        <div class="fg"><label>Adres</label><input name="adres" value="{{ musteri.adres if musteri else '' }}"></div>
+        <div class="fg"><label>Kredi Limiti (₺)</label><input name="kredi_limiti" type="number" step="1000" value="{{ musteri.kredi_limiti|float if musteri else 50000 }}"></div>
+      </div>
+      <div>
+        <div class="fs">Logo / Fotoğraf</div>
+        <div class="img-upload-area" onclick="document.getElementById('resim-input').click()">
+          {% if musteri and musteri.resim %}
+          <img src="/uploads/{{ musteri.resim }}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;">
+          {% else %}
+          <div style="font-size:32px;margin-bottom:6px;">🏢</div>
+          {% endif %}
+          <div class="hint">PNG, JPG · max 5MB</div>
+        </div>
+        <input type="file" id="resim-input" name="resim" accept="image/*" style="display:none" onchange="previewImage(this)">
+      </div>
+    </div>
+    <div class="fa">
+      <button class="btn btn-p" type="submit">💾 Kaydet</button>
+      <a href="/musteriler" class="btn btn-ghost">İptal</a>
+    </div>
+  </form>
+</div>
+<script>
+function previewImage(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const area = input.closest('.fc').querySelector('.img-upload-area');
+      area.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;"><div class="hint">Değiştirmek için tıkla</div>`;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+</script>
+{% endblock %}

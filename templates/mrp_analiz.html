@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}MRP Analiz{% endblock %}
+{% block page_title %}MRP Analizi — Tüm BOM'lar{% endblock %}
+{% block content %}
+
+<div class="flash flash-warning" style="margin-bottom:16px;">
+  ⚙️ MRP formülü: <strong>Net İhtiyaç = Brüt İhtiyaç − Mevcut Stok</strong> — Her BOM için 1 adet üretim varsayımıyla hesaplanmıştır.
+</div>
+
+{% for item in analiz %}
+<div class="panel" style="margin-bottom:16px;">
+  <div class="panel-header">
+    <h2>{{ item.bom.mamul.ad }} — v{{ item.bom.versiyon }}</h2>
+    <div class="acts">
+      <span class="tm" style="font-size:12px;">Birim Maliyet: <strong>{{ "%.2f"|format(item.bom.toplam_maliyet|float) }} ₺</strong></span>
+      <a href="/uretim/bom/{{ item.bom.id }}" class="btn btn-g btn-sm">BOM Detay</a>
+      <a href="/uretim/emir/yeni" class="btn btn-p btn-sm">+ Üretim Emri</a>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Hammadde</th><th>1 Adet İçin Gereken</th><th>Mevcut Stok</th><th>Net İhtiyaç (1 adet)</th><th>Durum</th></tr></thead>
+    <tbody>
+    {% for e in item.ihtiyaclar %}
+    <tr>
+      <td><strong>{{ e.urun.ad }}</strong><br><small class="tm">{{ e.urun.sku }}</small></td>
+      <td>{{ "%.3f"|format(e.gereken) }} {{ e.urun.birim }}</td>
+      <td class="{{ 'fw' if not e.yeterli else '' }}" style="{{ 'color:var(--err)' if not e.yeterli else '' }}">
+        {{ e.mevcut }} {{ e.urun.birim }}
+      </td>
+      <td>
+        {% if e.eksik > 0 %}<span class="fw" style="color:var(--err);">+{{ "%.0f"|format(e.eksik) }} {{ e.urun.birim }} gerekli</span>
+        {% else %}<span class="tm">Yeterli</span>{% endif %}
+      </td>
+      <td>
+        {% if e.yeterli %}<span class="badge b-g">✓ OK</span>
+        {% else %}<span class="badge b-r">✗ Eksik</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="panel">
+  <div style="text-align:center;padding:40px;color:var(--mu);">
+    Henüz BOM tanımlanmamış. <a href="/uretim/bom/yeni" class="btn btn-p btn-sm" style="margin-left:10px;">+ Yeni BOM</a>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

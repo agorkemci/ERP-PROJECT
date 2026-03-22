@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Müşteriler{% endblock %}
+{% block page_title %}Müşteriler{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header">
+    <h2>👥 Müşteri Listesi</h2>
+    <div class="acts">
+      <input type="text" placeholder="Ara..." value="{{ q }}" onkeyup="if(event.key==='Enter')window.location='/musteriler?q='+this.value" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--tx);font-size:13px;outline:none;width:180px;">
+      <a href="/musteri/yeni" class="btn btn-p btn-sm">+ Yeni Müşteri</a>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th></th><th>Firma / Ad</th><th>Telefon</th><th>E-posta</th><th>Kredi Limiti</th><th>Sipariş</th><th></th></tr></thead>
+    <tbody>
+    {% for m in musteriler %}
+    <tr>
+      <td>
+        {% if m.resim %}<img src="/uploads/{{ m.resim }}" class="timg">
+        {% else %}<div class="timg-ph">🏢</div>{% endif %}
+      </td>
+      <td><span class="fw">{{ m.ad }}</span><br><span class="mono" style="font-size:11px;color:var(--tx3);">{{ m.vergi_no or '' }}</span></td>
+      <td class="tm">{{ m.telefon or '—' }}</td>
+      <td class="tm">{{ m.email or '—' }}</td>
+      <td class="mono fw">{{ "%.0f"|format(m.kredi_limiti|float) }} ₺</td>
+      <td><span class="badge b-indigo">{{ m.siparisler|length }}</span></td>
+      <td style="display:flex;gap:6px;">
+        <a href="/musteri/{{ m.id }}/duzenle" class="btn btn-ghost btn-sm">Düzenle</a>
+        <form method="post" action="/musteri/{{ m.id }}/sil" onsubmit="return confirm('Pasife al?')"><button class="btn btn-ghost btn-sm" style="color:var(--red2);">Sil</button></form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--tx3);">Müşteri yok. <a href="/musteri/yeni" style="color:var(--p2);">Ekle</a></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

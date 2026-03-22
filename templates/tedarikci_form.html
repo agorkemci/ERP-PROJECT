@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Tedarikçi Düzenle' if tedarikci else 'Yeni Tedarikçi' }}{% endblock %}
+{% block page_title %}{{ 'Tedarikçi Düzenle' if tedarikci else 'Yeni Tedarikçi' }}{% endblock %}
+{% block content %}
+<div class="form-card">
+  <form method="post">
+    <div class="form-row">
+      <div class="form-group"><label>Firma Adı *</label>
+        <input name="ad" required value="{{ tedarikci.ad if tedarikci else '' }}"></div>
+      <div class="form-group"><label>Vergi No</label>
+        <input name="vergi_no" value="{{ tedarikci.vergi_no if tedarikci else '' }}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Telefon</label>
+        <input name="telefon" value="{{ tedarikci.telefon if tedarikci else '' }}"></div>
+      <div class="form-group"><label>E-posta</label>
+        <input name="email" type="email" value="{{ tedarikci.email if tedarikci else '' }}"></div>
+    </div>
+    <div class="form-group"><label>Adres</label>
+      <textarea name="adres" rows="2">{{ tedarikci.adres if tedarikci else '' }}</textarea></div>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">💾 Kaydet</button>
+      <a href="/tedarikciler" class="btn btn-ghost">İptal</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

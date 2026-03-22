@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Satın Alma{% endblock %}
+{% block page_title %}Satın Alma Siparişleri{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header">
+    <h2>PO Listesi</h2>
+    <div class="actions">
+      <div style="display:flex;gap:6px;">
+        {% for d in ['','Taslak','Gönderildi','Teslim Alındı','İptal'] %}
+        <a href="/satin-alma?durum={{ d }}" class="btn btn-sm {{ 'btn-primary' if durum==d else 'btn-ghost' }}">{{ d or 'Tümü' }}</a>
+        {% endfor %}
+      </div>
+      <a href="/satin-alma/yeni" class="btn btn-accent btn-sm">+ Yeni PO</a>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>PO No</th><th>Tedarikçi</th><th>Tarih</th><th>Kalem</th><th>Toplam</th><th>Tip</th><th>Durum</th><th></th></tr></thead>
+    <tbody>
+    {% for po in liste %}
+    <tr>
+      <td class="fw-bold">{{ po.po_no }}</td>
+      <td>{{ po.tedarikci.ad if po.tedarikci else '—' }}</td>
+      <td class="text-muted">{{ po.tarih.strftime('%d.%m.%Y') }}</td>
+      <td>{{ po.kalemler|length }}</td>
+      <td class="fw-bold">{{ "%.2f"|format(po.toplam) }} ₺</td>
+      <td>{% if po.otomatik %}<span class="badge b-teal">Otomatik</span>{% else %}<span class="badge b-gray">Manuel</span>{% endif %}</td>
+      <td>
+        {% if po.durum=='Teslim Alındı' %}<span class="badge b-green">{{ po.durum }}</span>
+        {% elif po.durum=='Gönderildi' %}<span class="badge b-blue">{{ po.durum }}</span>
+        {% elif po.durum=='Taslak' %}<span class="badge b-orange">{{ po.durum }}</span>
+        {% else %}<span class="badge b-gray">{{ po.durum }}</span>{% endif %}
+      </td>
+      <td><a href="/satin-alma/{{ po.id }}" class="btn btn-ghost btn-sm">Detay</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted);">PO bulunamadı</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

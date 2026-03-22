@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Yeni BOM{% endblock %}
+{% block page_title %}Yeni Bill of Materials{% endblock %}
+{% block content %}
+<div class="fc" style="max-width:1000px;">
+  <form method="post">
+    <div class="fs">Mamul Ürün</div>
+    <div class="fr">
+      <div class="fg"><label>Mamul Ürün *</label>
+        <select name="mamul_id" required onchange="mamulSecildi(this)">
+          <option value="">— Seçin —</option>
+          {% for u in urunler %}<option value="{{ u.id }}" data-maliyet="{{ u.mevcut_maliyet|float }}" data-img="{{ u.resim or '' }}">{{ u.ad }} ({{ u.sku or u.id }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="fg"><label>BOM Versiyonu</label><input name="versiyon" value="1.0"></div>
+    </div>
+    <div class="fg"><label>Açıklama</label><input name="aciklama" placeholder="BOM açıklaması (isteğe bağlı)"></div>
+
+    <div class="fs">Hammadde Kalemleri</div>
+    <p style="font-size:12px;color:var(--tx3);margin-bottom:14px;">1 adet mamul üretmek için gereken hammadde miktarlarını ve temin sürelerini girin.</p>
+
+    <!-- BOM table header -->
+    <div style="display:grid;grid-template-columns:2.2fr 0.8fr 0.7fr 0.8fr 1fr 36px;gap:8px;padding:8px 12px;background:var(--bg3);border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;">
+      <span style="font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Hammadde</span>
+      <span style="font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Miktar</span>
+      <span style="font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Fire %</span>
+      <span style="font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Lead Time (Gün)</span>
+      <span style="font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Not</span>
+      <span></span>
+    </div>
+
+    <div id="kalemler" style="border:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;">
+      <div class="bom-satir" style="display:grid;grid-template-columns:2.2fr 0.8fr 0.7fr 0.8fr 1fr 36px;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--bg2);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="hammadde-img" style="width:32px;height:32px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">📦</div>
+          <select name="hammadde_id" onchange="satirGuncelle(this)" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;">
+            <option value="">— Hammadde Seçin —</option>
+            {% for u in urunler %}<option value="{{ u.id }}" data-maliyet="{{ u.mevcut_maliyet|float }}" data-stok="{{ u.stok }}" data-img="{{ u.resim or '' }}" data-lt="{{ u.temin_suresi_gun }}">{{ u.ad }} (Stok: {{ u.stok }})</option>{% endfor %}
+          </select>
+        </div>
+        <input type="number" name="miktar" step="0.001" min="0.001" placeholder="1" oninput="toplamHesapla()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;width:100%;">
+        <input type="number" name="fire_yuzdesi" step="0.1" min="0" max="100" value="0" placeholder="0" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;width:100%;">
+        <input type="number" name="lead_time_gun" min="0" value="0" placeholder="0" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;width:100%;">
+        <input type="text" name="notlar_kalem" placeholder="Opsiyonel not" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;width:100%;">
+        <button type="button" onclick="satirSil(this)" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--red2);cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;">×</button>
+      </div>
+    </div>
+
+    <button type="button" onclick="satirEkle()" class="btn btn-ghost btn-sm" style="margin-top:10px;">+ Satır Ekle</button>
+
+    <!-- Toplam -->
+    <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);">
+      <div>
+        <div style="font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Tahmini Birim Üretim Maliyeti</div>
+        <div style="font-size:22px;font-weight:700;color:var(--p2);font-family:'DM Mono',monospace;"><span id="toplam">0.00</span> ₺</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:var(--tx3);">Hammadde sayısı</div>
+        <div style="font-size:18px;font-weight:600;color:var(--tx);" id="satir-sayisi">1</div>
+      </div>
+    </div>
+
+    <div class="fa">
+      <button class="btn btn-p" type="submit">💾 BOM Kaydet</button>
+      <a href="/uretim/bom" class="btn btn-ghost">İptal</a>
+    </div>
+  </form>
+</div>
+
+<script>
+const urunler = { {% for u in urunler %}"{{ u.id }}": { maliyet: {{ u.mevcut_maliyet|float }}, stok: {{ u.stok }}, img: "{{ u.resim or '' }}", lt: {{ u.temin_suresi_gun }} }, {% endfor %} };
+
+function satirGuncelle(sel) {
+  const uid = sel.value;
+  const satir = sel.closest('.bom-satir');
+  const imgDiv = satir.querySelector('.hammadde-img');
+  if (uid && urunler[uid]) {
+    const u = urunler[uid];
+    if (u.img) {
+      imgDiv.innerHTML = `<img src="/uploads/${u.img}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;">`;
+    } else {
+      imgDiv.innerHTML = '📦';
+    }
+    const ltInput = satir.querySelector('[name=lead_time_gun]');
+    if (ltInput && ltInput.value == '0') ltInput.value = u.lt;
+  }
+  toplamHesapla();
+}
+
+function toplamHesapla() {
+  let toplam = 0;
+  document.querySelectorAll('.bom-satir').forEach(s => {
+    const uid = s.querySelector('[name=hammadde_id]').value;
+    const mik = parseFloat(s.querySelector('[name=miktar]').value) || 0;
+    const fire = parseFloat(s.querySelector('[name=fire_yuzdesi]').value) || 0;
+    if (uid && urunler[uid]) toplam += mik * (1+fire/100) * urunler[uid].maliyet;
+  });
+  document.getElementById('toplam').textContent = toplam.toFixed(2);
+  document.getElementById('satir-sayisi').textContent = document.querySelectorAll('.bom-satir').length;
+}
+
+function satirEkle() {
+  const ilk = document.querySelector('.bom-satir');
+  const yeni = ilk.cloneNode(true);
+  yeni.querySelector('select').value = '';
+  yeni.querySelectorAll('input').forEach(i => {
+    if(i.name==='fire_yuzdesi'||i.name==='lead_time_gun') i.value='0';
+    else i.value='';
+  });
+  yeni.querySelector('.hammadde-img').innerHTML = '📦';
+  yeni.querySelector('select').onchange = function(){ satirGuncelle(this); };
+  yeni.querySelectorAll('input').forEach(i => { i.oninput = toplamHesapla; });
+  yeni.querySelector('button').onclick = function(){ satirSil(this); };
+  document.getElementById('kalemler').appendChild(yeni);
+  document.getElementById('satir-sayisi').textContent = document.querySelectorAll('.bom-satir').length;
+}
+
+function satirSil(btn) {
+  if(document.querySelectorAll('.bom-satir').length > 1) {
+    btn.closest('.bom-satir').remove(); toplamHesapla();
+  }
+}
+</script>
+{% endblock %}

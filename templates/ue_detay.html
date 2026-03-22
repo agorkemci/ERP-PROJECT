@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}{{ ue.ue_no }}{% endblock %}
+{% block page_title %}Üretim Emri — {{ ue.ue_no }}{% endblock %}
+{% block content %}
+
+<!-- State Flow -->
+<div class="state-flow">
+  {% set flow = [('TASLAK','Taslak'),('PLANLI','Planlandı'),('URETIMDE','Üretimde'),('TAMAMLANDI','Tamamlandı')] %}
+  {% for code,label in flow %}
+    {% if ue.durum == 'IPTAL' %}<div class="state-step cancelled">❌ İptal</div>
+    {% elif ue.durum == code %}<div class="state-step active">● {{ label }}</div>
+    {% elif loop.index < loop.length %}<div class="state-step">○ {{ label }}</div>
+    {% else %}<div class="state-step">○ {{ label }}</div>{% endif %}
+    {% if not loop.last %}<span class="arrow">›</span>{% endif %}
+  {% endfor %}
+</div>
+
+<!-- MRP Uyarısı -->
+{% set eksik_var = eksikler|selectattr('yeterli', 'eq', false)|list %}
+{% if eksik_var and ue.durum in ['TASLAK','PLANLI'] %}
+<div class="flash flash-warning">
+  ⚠️ <strong>{{ eksik_var|length }} hammadde eksik!</strong>
+  {% for e in eksik_var %}{{ e.urun.ad }} (eksik: {{ "%.0f"|format(e.eksik) }}){% if not loop.last %}, {% endif %}{% endfor %}
+  — Planla butonuyla MRP otomatik PO oluşturur.
+</div>
+{% endif %}
+
+<!-- Aksiyon Butonları -->
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+  {% if ue.durum == 'TASLAK' %}
+  <form method="post" action="/uretim/emir/{{ ue.id }}/planla">
+    <button class="btn btn-a">⚙️ Planla (MRP Çalıştır)</button>
+  </form>
+  {% endif %}
+  {% if ue.durum == 'PLANLI' %}
+  <form method="post" action="/uretim/emir/{{ ue.id }}/baslat">
+    <button class="btn btn-ok">▶ Üretime Başla (Hammadde Tüket)</button>
+  </form>
+  {% endif %}
+  {% if ue.durum == 'URETIMDE' %}
+  <form method="post" action="/uretim/emir/{{ ue.id }}/tamamla">
+    <button class="btn btn-p">✅ Üretimi Tamamla (Mamul Stoğa Ekle)</button>
+  </form>
+  {% endif %}
+  {% if ue.durum not in ['TAMAMLANDI','IPTAL'] %}
+  <form method="post" action="/uretim/emir/{{ ue.id }}/iptal" onsubmit="return confirm('İptal edilsin mi?')">
+    <button class="btn btn-err">❌ İptal</button>
+  </form>
+  {% endif %}
+  <a href="/uretim/bom/{{ ue.bom.id }}" class="btn btn-g">📐 BOM Görüntüle</a>
+</div>
+
+<div class="dg">
+  <div class="dc">
+    <h3>Üretim Emri Bilgileri</h3>
+    <div class="dr"><span class="lbl">UE No</span><span class="fw">{{ ue.ue_no }}</span></div>
+    <div class="dr"><span class="lbl">Mamul</span><span class="fw">{{ ue.mamul.ad }}</span></div>
+    <div class="dr"><span class="lbl">Üretim Miktarı</span><span class="fw">{{ ue.uretim_miktari }} {{ ue.mamul.birim }}</span></div>
+    <div class="dr"><span class="lbl">BOM Versiyonu</span><span>v{{ ue.bom.versiyon }}</span></div>
+    <div class="dr"><span class="lbl">Durum</span><span class="fw">{{ ue.durum_label }}</span></div>
+    {% if ue.gercek_baslangic %}<div class="dr"><span class="lbl">Başlangıç</span><span>{{ ue.gercek_baslangic.strftime('%d.%m.%Y %H:%M') }}</span></div>{% endif %}
+    {% if ue.gercek_bitis %}<div class="dr"><span class="lbl">Bitiş</span><span>{{ ue.gercek_bitis.strftime('%d.%m.%Y %H:%M') }}</span></div>{% endif %}
+  </div>
+  <div class="dc">
+    <h3>Maliyet Özeti</h3>
+    <div class="dr"><span class="lbl">Tahmini Birim Maliyet</span><span>{{ "%.2f"|format(ue.bom.toplam_maliyet|float) }} ₺</span></div>
+    <div class="dr"><span class="lbl">Gerçekleşen Toplam</span><span class="fw" style="color:var(--p);">{{ "%.2f"|format(ue.toplam_maliyet|float) }} ₺</span></div>
+    {% if ue.uretim_miktari > 0 and ue.toplam_maliyet|float > 0 %}
+    <div class="dr"><span class="lbl">Gerçekleşen Birim</span><span class="fw">{{ "%.2f"|format(ue.toplam_maliyet|float / ue.uretim_miktari) }} ₺</span></div>
+    {% endif %}
+    <div class="dr"><span class="lbl">Satış Fiyatı</span><span>{{ "%.2f"|format(ue.mamul.satis_fiyati|float) }} ₺</span></div>
+    {% if ue.durum == 'TAMAMLANDI' %}
+    <div class="dr"><span class="lbl">Brüt Kâr/Adet</span>
+      <span style="color:var(--ok);font-weight:600;">{{ "%.2f"|format(ue.mamul.satis_fiyati|float - ue.toplam_maliyet|float / ue.uretim_miktari) }} ₺</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- MRP Analizi -->
+<div class="panel">
+  <div class="panel-header"><h2>MRP Analizi — Hammadde İhtiyacı</h2></div>
+  <table>
+    <thead><tr><th>Hammadde</th><th>BOM Miktar/Adet</th><th>Fire %</th><th>Net Gerekli</th><th>Toplam Gerekli</th><th>Mevcut Stok</th><th>Eksik</th><th>Durum</th></tr></thead>
+    <tbody>
+    {% for e in eksikler %}
+    <tr>
+      <td><strong>{{ e.urun.ad }}</strong></td>
+      <td class="tm">{{ e.gereken / ue.uretim_miktari | round(3) }}</td>
+      <td class="tm">
+        {% for k in ue.bom.kalemler %}{% if k.hammadde_id == e.urun.id %}%{{ k.fire_yuzdesi|float }}{% endif %}{% endfor %}
+      </td>
+      <td>{{ "%.3f"|format(e.gereken / ue.uretim_miktari) }} / adet</td>
+      <td class="fw">{{ "%.0f"|format(e.gereken) }} {{ e.urun.birim }}</td>
+      <td class="{{ 'fw' if not e.yeterli else '' }}" style="{{ 'color:var(--err)' if not e.yeterli else '' }}">
+        {{ e.mevcut }} {{ e.urun.birim }}
+      </td>
+      <td>
+        {% if not e.yeterli %}<span class="fw" style="color:var(--err);">{{ "%.0f"|format(e.eksik) }} {{ e.urun.birim }}</span>
+        {% else %}<span class="tm">—</span>{% endif %}
+      </td>
+      <td>
+        {% if e.yeterli %}<span class="badge b-g">✓ Yeterli</span>
+        {% else %}<span class="badge b-r">✗ Eksik</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Tüketilen Hammaddeler (üretim başladıktan sonra) -->
+{% if ue.malzeme_hareketleri %}
+<div class="panel">
+  <div class="panel-header"><h2>Tüketilen Hammaddeler (Gerçekleşen)</h2></div>
+  <table>
+    <thead><tr><th>Hammadde</th><th>Miktar</th><th>Birim Maliyet</th><th>Toplam</th><th>Tarih</th></tr></thead>
+    <tbody>
+    {% for h in ue.malzeme_hareketleri %}
+    <tr>
+      <td><strong>{{ h.hammadde.ad }}</strong></td>
+      <td>{{ "%.3f"|format(h.miktar|float) }} {{ h.hammadde.birim }}</td>
+      <td class="tm">{{ "%.4f"|format(h.birim_maliyet|float) }} ₺</td>
+      <td class="fw">{{ "%.2f"|format(h.miktar|float * h.birim_maliyet|float) }} ₺</td>
+      <td class="tm">{{ h.tarih.strftime('%d.%m.%Y %H:%M') }}</td>
+    </tr>
+    {% endfor %}
+    <tr style="background:#f8fafc;">
+      <td colspan="3" style="text-align:right;padding:10px 14px;font-weight:600;">Toplam Üretim Maliyeti</td>
+      <td colspan="2" style="padding:10px 14px;font-weight:700;color:var(--p);">{{ "%.2f"|format(ue.toplam_maliyet|float) }} ₺</td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

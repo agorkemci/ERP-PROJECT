@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Genel Defter{% endblock %}
+{% block page_title %}Genel Defter (Double-Entry GL){% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header"><h2>GL Kayıtları — Slide 28/55: Double-Entry</h2></div>
+  <table>
+    <thead><tr><th>Tarih</th><th>Hesap</th><th>Borç (Debit)</th><th>Alacak (Credit)</th><th>Ref</th><th>Açıklama</th></tr></thead>
+    <tbody>
+    {% for g in kayitlar %}
+    <tr>
+      <td class="tm">{{ g.tarih.strftime('%d.%m.%Y %H:%M') }}</td>
+      <td><span class="badge {% if 'COGS' in g.hesap %}b-r{% elif 'Stok' in g.hesap %}b-b{% elif 'Alacak' in g.hesap or 'AR' in g.hesap %}b-g{% elif 'Kasa' in g.hesap %}b-t{% elif 'GR_IR' in g.hesap %}b-y{% elif 'Borc' in g.hesap %}b-o{% else %}b-gr{% endif %}">{{ g.hesap }}</span></td>
+      <td class="fw" style="color:var(--err);">{% if g.borc > 0 %}{{ "%.2f"|format(g.borc) }} ₺{% endif %}</td>
+      <td class="fw" style="color:var(--ok);">{% if g.alacak > 0 %}{{ "%.2f"|format(g.alacak) }} ₺{% endif %}</td>
+      <td class="tm">{{ g.ref_tip }}-{{ g.ref_id }}</td>
+      <td class="tm" style="font-size:12px;">{{ g.aciklama }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

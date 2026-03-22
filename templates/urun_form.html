@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Ürün Düzenle' if urun else 'Yeni Ürün' }}{% endblock %}
+{% block page_title %}{{ 'Ürün Düzenle' if urun else 'Yeni Ürün' }}{% endblock %}
+{% block content %}
+<div class="fc">
+  <form method="post" enctype="multipart/form-data">
+
+    <div style="display:grid;grid-template-columns:1fr 160px;gap:20px;align-items:start;">
+      <div>
+        <div class="fs">Temel Bilgiler</div>
+        <div class="fr">
+          <div class="fg"><label>Ürün Adı *</label><input name="ad" value="{{ urun.ad if urun else '' }}" required placeholder="Ürün adı"></div>
+          <div class="fg"><label>SKU / Kod</label><input name="sku" value="{{ urun.sku if urun else '' }}" placeholder="LP-001"></div>
+        </div>
+        <div class="fr3">
+          <div class="fg"><label>Ürün Tipi</label>
+            <select name="urun_tipi">
+              {% for tip in ['TICARI','HAMMADDE','YARI_MAMUL','MAMUL'] %}
+              <option value="{{ tip }}" {% if urun and urun.urun_tipi==tip %}selected{% endif %}>{{ tip }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="fg"><label>Kategori</label>
+            <select name="kategori_id">
+              <option value="">— Seçin —</option>
+              {% for k in kategoriler %}<option value="{{ k.id }}" {% if urun and urun.kategori_id==k.id %}selected{% endif %}>{{ k.ad }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fg"><label>Birim</label>
+            <select name="birim">
+              {% for b in ['Adet','Kg','Lt','Mt','Kutu','Paket'] %}
+              <option value="{{ b }}" {% if urun and urun.birim==b %}selected{% elif not urun and b=='Adet' %}selected{% endif %}>{{ b }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image upload -->
+      <div>
+        <div class="fs">Ürün Görseli</div>
+        <div class="img-upload-area" onclick="document.getElementById('resim-input').click()">
+          {% if urun and urun.resim %}
+          <img src="/uploads/{{ urun.resim }}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;">
+          {% else %}
+          <div style="font-size:32px;margin-bottom:6px;">🖼️</div>
+          {% endif %}
+          <div class="hint">Tıkla veya sürükle<br>PNG, JPG, WEBP · max 5MB</div>
+        </div>
+        <input type="file" id="resim-input" name="resim" accept="image/*" style="display:none" onchange="previewImage(this)">
+      </div>
+    </div>
+
+    <div class="fs">Fiyat & Maliyet</div>
+    <div class="fr3">
+      <div class="fg"><label>Satış Fiyatı (₺) *</label><input name="satis_fiyati" type="number" step="0.01" value="{{ urun.satis_fiyati|float if urun else '' }}" required placeholder="0.00"></div>
+      <div class="fg"><label>Maliyet Yöntemi</label>
+        <select name="maliyet_yontemi">
+          {% for m in ['FIFO','LIFO','AVERAGE'] %}
+          <option value="{{ m }}" {% if urun and urun.maliyet_yontemi==m %}selected{% elif not urun and m=='FIFO' %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg"><label>Tercihli Tedarikçi</label>
+        <select name="tedarikci_id">
+          <option value="">— Seçin —</option>
+          {% for t in tedarikciler %}<option value="{{ t.id }}" {% if urun and urun.tercihli_tedarikci_id==t.id %}selected{% endif %}>{{ t.ad }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="fs">Stok & MRP</div>
+    <div class="fr3">
+      <div class="fg"><label>Minimum Stok</label><input name="minimum_stok" type="number" value="{{ urun.minimum_stok if urun else 10 }}"></div>
+      <div class="fg"><label>Yenileme Miktarı</label><input name="yenileme_miktari" type="number" value="{{ urun.yenileme_miktari if urun else 50 }}"></div>
+      <div class="fg"><label>Temin Süresi (Gün)</label><input name="temin_suresi_gun" type="number" value="{{ urun.temin_suresi_gun if urun else 2 }}"></div>
+    </div>
+
+    {% if not urun %}
+    <div class="fs">Başlangıç Stoğu</div>
+    <div class="fr">
+      <div class="fg"><label>Başlangıç Miktarı</label><input name="ilk_stok" type="number" value="0" placeholder="0"></div>
+      <div class="fg"><label>Birim Maliyet (₺)</label><input name="ilk_maliyet" type="number" step="0.01" placeholder="0.00"></div>
+    </div>
+    {% endif %}
+
+    <div class="fa">
+      <button class="btn btn-p" type="submit">💾 Kaydet</button>
+      <a href="/urunler" class="btn btn-ghost">İptal</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function previewImage(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const area = input.closest('.fc').querySelector('.img-upload-area');
+      area.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px;"><div class="hint">Değiştirmek için tıkla</div>`;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+</script>
+{% endblock %}
